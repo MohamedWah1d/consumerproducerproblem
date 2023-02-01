@@ -102,73 +102,45 @@ void sem_init(int semid, int bs)
 
 - Finally we have the inifinite loop:
  ```C
-while(true) {
-	// Check if you can take an item from the buffer
-	asem[0].sem_op=-1;
-	if (semop (con_sem, asem, 1) == -1) {
-   		perror ("semop: con_sem"); exit (1);
-	}
-	// Get Mutual Execlusion
-	asem[0].sem_op=-1;
-	if (semop (mutex_sem, asem, 1) == -1) {
-   		perror ("semop: mutex_sem"); exit (1);
-	}
-	// Critical Section Begin
-	string tmp = str;
-	string tmp2 = tmp.substr(0, tmp.find("\n"));
-	tmp.erase(0, tmp.find("\n") + 1);
-	strcpy(str, tmp.c_str());
-	// Critical Section End
-	// Release Mutual Execlusion
-	asem[0].sem_op=1;
-	if (semop (mutex_sem, asem, 1) == -1) {
-   		perror ("semop: mutex_sem"); exit (1);
-	}
-	// Add empty space on buffer
-	asem[0].sem_op=1;
-	if (semop (prod_sem, asem, 1) == -1) {
-   		perror ("semop: prod_sem"); exit (1);
-	}
-// Fill and print vector of deques
-	fill(v, tmp2);
-	printCon(v);
-}
-```
-- This code is for safe exiting and checks if the user wants to delete memory and semaphores:
- ```C
-// Handles ctrl C
-void handler_function(int sig){
-	printf("\nRequest to TERMINATE initiated....\n ");
-	printf("Releaseing all Semaphores....\n ");
-	end();
-}
+struct item product;
+    while (true)
+    {
+        // To decrease the value of the buffer size by 1, whenever the consumer consumes the buffer
+        sem_wait(semid, 0);
 
-// Check if user wants to deleter shared memory or semaphores
-void end(){
-	shmdt(str);
-	printf("DELETE SEMAPHORES?? [Y/N] : ");
-	char c;
-	cin >> c;
-	if ( c == 'Y' || c == 'y' ) {
-		// remove semaphores
-		if (semctl (mutex_sem, 0, IPC_RMID) == -1) {
-			perror ("semctl IPC_RMID"); exit (1);
-		}
-		if (semctl (prod_sem, 0, IPC_RMID) == -1) {
-			perror ("semctl IPC_RMID"); exit (1);
-		}
-		if (semctl (con_sem, 0, IPC_RMID) == -1) {
-			perror ("semctl IPC_RMID"); exit (1);
-		}
-	}
-	printf("DELETE SHARED MEMORY?? [Y/N] : ");
-	cin >> c;
-	if ( c == 'Y' || c == 'y' ) {
-		shmctl(shmid,IPC_RMID,0);
-	}
-	printf("\n TERMINATING...\n");
-	exit(0);
-}
+        // To ensure no two processes enter the critical section at the same time
+        sem_wait(semid, 2);
+
+        // To get the data form the buffer
+        product = take(out, buffer, bs);
+
+        // appending to the vector in the hash table to keep track of the prev prices and the newest price
+        std::vector<double> temp;
+        temp = m[product.comodity_name];
+        if (temp[0] == 0.0)
+        {
+            temp.erase(temp.begin()); // deleting dummy element before insertion (we don't count price 0.0 as a price)
+        }
+
+        if (sz(temp) < 5)
+        {
+            temp.push_back(product.today_price);
+            m[product.comodity_name] = temp;
+        }
+        else
+        {
+            temp.erase(temp.begin());
+            temp.push_back(product.today_price);
+            m[product.comodity_name] = temp;
+        }
+
+        m1=customer_reciept(m, m1);
+        // add 1 to the s semaphore after getting out from the critical section
+        sem_signal(semid, 2);
+
+        // decrease e by 1 when a value is taken from the buffer
+        sem_signal(semid, 1);
+    }
 ```
 * In the end of each loop  the consumer prints the current prices and average for the last five prices.
 
@@ -178,59 +150,39 @@ void end(){
 2. Producer has EXITVAL global variables used for same
 - Producer while loop:
  ```C
-// infinite loop to run the producer unitl ctrl C is hit
-while(true) {
-	// Check if exit is called
-	if ( EXITVAL ) end();
-	// get price from distribution
-	double price = distribution(generator);
-	price = abs(price);
-	// Get time in gmt and add 2 hours to be in local time
-	clock_gettime( CLOCK_REALTIME ,&ts );
-	ts.tv_sec += 7200;
-	strftime(buff, sizeof buff, "%D %T", gmtime(&ts.tv_sec));
-	fprintf(stderr,"[ %s.%03ld ] %s: generatine new value %.2lf\n",buff, ts.tv_nsec,tmp.c_str(),price);
-	// Check if you can take an item from the buffer
-	asem[0].sem_op=-1;
-	if (semop (prod_sem, asem, 1) == -1) {
-   		perror ("semop: con_sem"); exit (1);
-	}
-	// Try to get mutex time and flag
-	clock_gettime( CLOCK_REALTIME ,&ts );
-	ts.tv_sec += 7200;
-	strftime(buff, sizeof buff, "%D %T", gmtime(&ts.tv_sec));
-	fprintf(stderr,"[ %s.%03ld ] %s: Trying to Get MUTEX of share Buffer\n",buff, ts.tv_nsec,tmp.c_str());
-	// Get Mutual Execlusion
-	asem[0].sem_op=-1;
-	if (semop (mutex_sem, asem, 1) == -1) {
-   		perror ("semop: mutex_sem"); exit (1);
-	}
-	// Critical Section Begin
-	string s = tmp;
-	s = s + ',' + to_string(price);
-	s = str + s + '\n';
-	strcpy(str, s.c_str());
-	// End of Critical Section
-	clock_gettime( CLOCK_REALTIME ,&ts );
-	ts.tv_sec += 7200;
-	strftime(buff, sizeof buff, "%D %T", gmtime(&ts.tv_sec));
-	fprintf(stderr,"[ %s.%03ld ] %s: Placing %.2lf on buffer\n",buff, ts.tv_nsec,tmp.c_str(),price);
-	// Release Mutual Execlusion
-	asem[0].sem_op=1;
-	if (semop (mutex_sem, asem, 1) == -1) {
-   		perror ("semop: mutex_sem"); exit (1);
-	}
-	// Add item on buffer
-	asem[0].sem_op=1;
-	if (semop (con_sem, asem, 1) == -1) {
-   		perror ("semop: prod_sem"); exit (1);
-	}
-	if ( EXITVAL ) end();
-	clock_gettime( CLOCK_REALTIME ,&ts );
-	ts.tv_sec += 7200;
-	strftime(buff, sizeof buff, "%D %T", gmtime(&ts.tv_sec));
-	fprintf(stderr,"[ %s.%03ld ] %s: Sleeping for %d ms\n",buff, ts.tv_nsec,tmp.c_str(),(int)slp*1000);
-	// Sleep
-	sleep(slp);
-}
+struct item t;
+    double randprice;
+    struct timespec current;
+    while (true)
+    {
+        std::random_device mch;
+        std::default_random_engine generator(mch());
+        std::normal_distribution<double> distribution(comodity_price_mean, comodity_price_stddiv);
+        double random_current_value = distribution(generator);
+
+        // t.today_price = randprice;
+        t.today_price = random_current_value;
+        get_time_stamp(current,"generating a new value  "+std::to_string(t.today_price),comodity_name);
+
+        // will reduce the value of semaphore e by 1.
+        sem_wait(semid, 1);
+        get_time_stamp(current,"trying to get mutex on shared buffer",comodity_name);
+        // To make sure that no two processes can enter the critical section at the same time.
+        sem_wait(semid, 2);
+        get_time_stamp(current,"placing "+std::to_string(t.today_price)+" on shared buffer",comodity_name);
+        // put the new product into the buffer.
+        //randprice = rand() % 1000;
+        strcpy(t.comodity_name, comodity_name);
+        append(t, in, b, bs);
+
+
+        // allow other semaphores to enter the critical section, when it's empty of processes
+        sem_signal(semid, 2);
+
+        // To add one to the semaphore variable n, whenever a value is added to the buffer.
+        sem_signal(semid, 0);
+        get_time_stamp(current,"sleeping for "+std::to_string(sleepinterval)+"ms",comodity_name);
+
+        sleep(sleepinterval/1000);
+    }
 ```
