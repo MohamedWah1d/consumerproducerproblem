@@ -34,15 +34,51 @@
 - Then there is the initialization:
 
 ```C    
-// Get max number of items on buffer and initialize memsize
-BOUND = stoi(argv[1]);
-memsize = BOUND * 32;
-// initialize semaphores buffer struct
-asem [0].sem_num = 0;
-asem [0].sem_op = 0;
-asem [0].sem_flg = 0;
-// Initialize memory and semaphores
-initMemSem();
+// function to get the sem id.
+int get_semid()
+{
+    // ftok to generate unique key
+    key_t key = ftok("semaphore", 1);
+
+    // creating the semaphore
+    // 0666 for the access permissions
+    int semid = semget(key, 3, 0666 | IPC_CREAT | IPC_EXCL);
+
+    return semid;
+}
+
+// function to initialize the semaphore
+void sem_init(int semid, int bs)
+{
+    union semun value;
+    // to get the desired value and pass it to the semctl function
+    // Initializing the n semaphore, "Full semaphore".
+    value.val = 0;
+    int semvaln = semctl(semid, 0, SETVAL, value);
+    if (semvaln == -1)
+    {
+        perror("semctl: error initializing the n semaphore");
+        exit(1);
+    }
+
+    // Initializing the e semaphore, "Empty semaphore".
+    value.val = bs;
+    int semvale = semctl(semid, 1, SETVAL, value);
+    if (semvale == -1)
+    {
+        perror("semctl: error initializing the e semaphore");
+        exit(1);
+    }
+
+    // Initializing the s semaphore, "MUTEX semaphore".
+    value.val = 1;
+    int semvals = semctl(semid, 2, SETVAL, value);
+    if (semvals == -1)
+    {
+        perror("semctl: error initializing the s semaphore");
+        exit(1);
+    }
+}
 ```
 - This is init memory and semaphore function in the previous part:
 ```C
