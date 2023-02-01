@@ -192,5 +192,6 @@ struct item t;
  ```C
  ipcrm -a
  ```
- 
+### Note:
+semaphore and sharedmemory files are trash files used as paths for the creation of the semaphores and shared memory.
 
