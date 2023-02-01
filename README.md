@@ -33,7 +33,7 @@
 | ZINC	| 10  |
 - Then there is the initialization:
 
- C    
+```C    
 // Get max number of items on buffer and initialize memsize
 BOUND = stoi(argv[1]);
 memsize = BOUND * 32;
@@ -43,9 +43,9 @@ asem [0].sem_op = 0;
 asem [0].sem_flg = 0;
 // Initialize memory and semaphores
 initMemSem();
-
+```
 - This is init memory and semaphore function in the previous part:
- C
+```C
 void initMemSem(){
 	// ftok to generate unique key for shared memory
 	if ((key = ftok(shmkey,65)) == -1) {
@@ -97,9 +97,10 @@ void initMemSem(){
 		perror ("semctl Prod SETVAL"); exit (1);
 	}
 }
+```
 
 - Finally we have the inifinite loop:
- C
+ ```C
 while(true) {
 	// Check if you can take an item from the buffer
 	asem[0].sem_op=-1;
@@ -131,9 +132,9 @@ while(true) {
 	fill(v, tmp2);
 	printCon(v);
 }
-
+```
 - This code is for safe exiting and checks if the user wants to delete memory and semaphores:
- C
+ ```C
 // Handles ctrl C
 void handler_function(int sig){
 	printf("\nRequest to TERMINATE initiated....\n ");
@@ -167,7 +168,7 @@ void end(){
 	printf("\n TERMINATING...\n");
 	exit(0);
 }
-
+```
 * In the end of each loop  the consumer prints the current prices and average for the last five prices.
 
 ### Producer:
@@ -175,7 +176,7 @@ void end(){
 1. Producer Cannot create semaphores or buffers only calls them
 2. Producer has EXITVAL global variables used for same
 - Producer while loop:
- C
+ ```C
 // infinite loop to run the producer unitl ctrl C is hit
 while(true) {
 	// Check if exit is called
@@ -231,85 +232,7 @@ while(true) {
 	// Sleep
 	sleep(slp);
 }
-
-
-### Clean:
-- This code deletes all shared memory and semaphores:
- C
-void memDel(){
-
-    struct shmid_ds shm_info;
-    struct shmid_ds shm_segment;
-    int max_id = shmctl(0,SHM_INFO,&shm_info);
-    if (max_id>=0){
-        for (int i=0;i<=max_id;++i) {
-                int shm_id = shmctl(i , SHM_STAT , &shm_segment);
-                if (shm_id<=0)
-                    continue;
-                else if (shm_segment.shm_nattch==0){
-                    delete_segment(shm_id);
-                }
-        }
-    }
-    return;
-}
-
-int main()
-{	
-	//signal(SIGINT, handler_function);
-    // ftok to generate unique key
-	key = ftok(shmkey,65);
-  
-    // shmget returns an identifier in shmid
-    int shmid = shmget(key,0,0);
-    if ( shmid < 0 ) {
-    	cout << "Shared Memory doesn't Exist" << endl;
-    }
-    // Destroy the shared memory  
-    shmctl(shmid,IPC_RMID,NULL);
-    
-    // ftok to generate unique key for Mutex
-	if ((key = ftok(msemkey,65)) == -1) {
-   		perror ("ftok Mutex"); exit(1);
-	}
-	// Create  Mutex Semaphore
-	if ((mutex_sem = semget (key, 1, 0666 | IPC_CREAT)) == -1) {
-    	perror ("semget Mutex"); exit (1);
-	}
-	// ftok to generate unique key for consumer
-	if ((key = ftok(csemkey,65)) == -1) {
-   		perror ("ftok Con"); exit(1);
-	}
-	// Create  consumer Semaphore ( Indicates number of available items on the buffer )
-	if ((con_sem = semget (key, 1, 0666 | IPC_CREAT)) == -1) {
-    	perror ("semget Con"); exit (1);
-	}
-	// ftok to generate unique key for producer
-	if ((key = ftok(psemkey,65)) == -1) {
-   		perror ("ftok Prod"); exit(1);
-	}
-	// Create  producer Semaphore ( Indicates number of available places on the buffer )
-	if ((prod_sem = semget (key, 1, 0666 | IPC_CREAT)) == -1) {
-    	perror ("semget Prod"); exit (1);
-	}
-    
-    
-    // remove semaphores
-    if (semctl (mutex_sem, 0, IPC_RMID) == -1) {
-        perror ("semctl IPC_RMID"); exit (1);
-    }
-    if (semctl (prod_sem, 0, IPC_RMID) == -1) {
-        perror ("semctl IPC_RMID"); exit (1);
-    }
-    if (semctl (con_sem, 0, IPC_RMID) == -1) {
-        perror ("semctl IPC_RMID"); exit (1);
-    }
-	memDel();
-    return 0;
-}
-
-
-
+```
 ## Sample Runs:
 > Running Consumer with max buffer of 10 items after running the make file
 - Picture one shows consumer and one producer
