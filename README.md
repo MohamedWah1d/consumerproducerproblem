@@ -34,6 +34,25 @@
 - Then there is the initialization:
 
 ```C    
+int *out;
+
+    // initializing the shared memory buffer.
+    int shmid = shm_id(bs);
+    buffer = shm_buffer(shmid);
+
+    // getting the semid of the semaphores
+    semid = get_semid();
+
+    // initializing the semaphores.
+    sem_init(semid, bs);
+
+    //inializing the indexing of the shared memory buffer.
+    shmid1 = shmget(IPC_PRIVATE, sizeof(int), IPC_CREAT | 0666);
+    out = (int *)shmat(shmid1, (void *)0, 0);
+    *out = 0;
+```
+- This is init memory and semaphore function in the previous part:
+```C
 // function to get the sem id.
 int get_semid()
 {
@@ -78,60 +97,6 @@ void sem_init(int semid, int bs)
         perror("semctl: error initializing the s semaphore");
         exit(1);
     }
-}
-```
-- This is init memory and semaphore function in the previous part:
-```C
-void initMemSem(){
-	// ftok to generate unique key for shared memory
-	if ((key = ftok(shmkey,65)) == -1) {
-       		perror ("ftok"); exit(1);
-    	}
-	// shmget returns an identifier in shmid
-	if ( (shmid = shmget(key,memsize,0666|IPC_CREAT)) < 0 ) {
-		perror("shmget"); exit(1);
-	}
-	// put shared memory in str
-	str= (char*) shmat(shmid,(void*)0,0);
-	// ftok to generate unique key for Mutex
-	if ((key = ftok(msemkey,65)) == -1) {
-       		perror ("ftok Mutex"); exit(1);
-    	}
-    	// Create  Mutex Semaphore
-	if ((mutex_sem = semget (key, 1, 0666 | IPC_CREAT)) == -1) {
-        	perror ("semget Mutex"); exit (1);
-    	}
-    	// Giving initial value. 
-	sem_attr.val = 1;      
-	if (semctl (mutex_sem, 0, SETVAL, sem_attr) == -1) {
-		perror ("semctl Mutex SETVAL"); exit (1);
-	}
-	// ftok to generate unique key for consumer
-	if ((key = ftok(csemkey,65)) == -1) {
-       		perror ("ftok Con"); exit(1);
-    	}
-    	// Create  consumer Semaphore ( Indicates number of available items on the buffer )
-	if ((con_sem = semget (key, 1, 0666 | IPC_CREAT)) == -1) {
-        	perror ("semget Con"); exit (1);
-    	}
-    	// Giving initial value. 
-	sem_attr.val = 0;      
-	if (semctl (con_sem, 0, SETVAL, sem_attr) == -1) {
-		perror ("semctl Con SETVAL"); exit (1);
-	}
-	// ftok to generate unique key for producer
-	if ((key = ftok(psemkey,65)) == -1) {
-       		perror ("ftok Prod"); exit(1);
-    	}
-    	// Create  producer Semaphore ( Indicates number of available places on the buffer )
-	if ((prod_sem = semget (key, 1, 0666 | IPC_CREAT)) == -1) {
-        	perror ("semget Prod"); exit (1);
-    	}
-    	// Giving initial value. 
-	sem_attr.val = BOUND;      
-	if (semctl (prod_sem, 0, SETVAL, sem_attr) == -1) {
-		perror ("semctl Prod SETVAL"); exit (1);
-	}
 }
 ```
 
