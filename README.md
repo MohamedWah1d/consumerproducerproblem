@@ -186,3 +186,11 @@ struct item t;
         sleep(sleepinterval/1000);
     }
 ```
+
+### Clean:
+- This code deletes all shared memory and semaphores can be found at the makefile:
+ ```C
+ ipcrm -a
+ ```
+ 
+
