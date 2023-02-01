@@ -234,11 +234,3 @@ while(true) {
 	sleep(slp);
 }
 ```
-## Sample Runs:
-> Running Consumer with max buffer of 10 items after running the make file
-- Picture one shows consumer and one producer
-![pic 1](assets/1.png)
-- Picture shows consumer with 11 producers
-![pic 2](assets/2.png)
-- Picture shows ending consumer and deleting semaphores and shared memory (make veryClean cannot find shared memory as it is alread deleted by consumer)
-![pic 3](assets/3.png)
